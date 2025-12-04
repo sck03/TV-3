@@ -29,10 +29,6 @@
             "name": "南风"
         },
         {
-            "url": "https:\/\/api.hgyx.vip\/hgyx.json",
-            "name": "HG"
-        },
-        {
             "url": "https:\/\/hub.gitmirror.com\/https:\/\/raw.githubusercontent.com\/yydfys\/yydf\/main\/yydf\/yydfjk.json",
             "name": "业余"
         },
@@ -67,6 +63,10 @@
         {
             "url": "https:\/\/jihulab.com\/z-blog\/xh2\/raw\/main\/t.json",
             "name": "荷城茶秀(备用)"
+        },
+        {
+            "url": "https:\/\/api.hgyx.vip\/hgyx.json",
+            "name": "HG"
         },
         {
             "url": "https:\/\/raw.gitmirror.com\/bestpvp\/tm\/main\/source\/stable\/main.json",
