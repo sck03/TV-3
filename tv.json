@@ -33,12 +33,12 @@
             "name": "小米(移动勿用)"
         },
         {
-            "url": "https:\/\/9877.kstore.space\/AnotherD\/api.json",
-            "name": "潇洒"
-        },
-        {
             "url": "https:\/\/hub.gitmirror.com\/https:\/\/raw.githubusercontent.com\/yydfys\/yydf\/main\/yydf\/yydfjk.json",
             "name": "业余"
+        },
+        {
+            "url": "https:\/\/9877.kstore.space\/AnotherD\/api.json",
+            "name": "潇洒"
         },
         {
             "url": "http:\/\/cdn.qiaoji8.com\/tvbox.json",
