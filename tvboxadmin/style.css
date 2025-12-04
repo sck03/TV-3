@@ -1,0 +1,260 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+body {
+    background: #f5f5f5;
+    padding: 20px;
+}
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    position: relative;
+    padding-top: 20px;
+}
+/* 标题居中样式 */
+.title-container {
+    text-align: center;
+    margin-bottom: 30px;
+}
+h1 {
+    color: #333;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 10px;
+    display: inline-block;
+}
+/* 列表标题与新增按钮同行样式 */
+.list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+h2 {
+    color: #333;
+    margin: 0;
+}
+.btn {
+    display: inline-block;
+    padding: 8px 16px;
+    background: #007bff;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+}
+.btn:hover {
+    background: #0056b3;
+}
+.btn-danger {
+    background: #dc3545;
+}
+.btn-danger:hover {
+    background: #c82333;
+}
+.btn-sm {
+    padding: 4px 8px;
+    font-size: 12px;
+}
+.form-group {
+    margin-bottom: 20px;
+}
+label {
+    display: block;
+    margin-bottom: 8px;
+    color: #666;
+    font-weight: bold;
+}
+input[type="text"], input[type="password"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    word-break: break-all;
+    overflow-wrap: break-word;
+}
+th, td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+th {
+    background: #f8f9fa;
+    color: #333;
+}
+tr:hover {
+    background: #f5f5f5;
+}
+/* 操作栏样式：上移下移第一行，编辑删除第二行 */
+.action-buttons {
+    max-width: 110px;
+}
+/* 消除表单默认间距 */
+.action-buttons .lin1 {
+    margin-bottom: 5px;
+}
+/* 排序按钮样式 */
+
+.move-up:disabled, .move-down:disabled {
+    background: #adb5bd;
+    cursor: not-allowed;
+}
+/* 拖拽排序相关样式 */
+tr.dragging {
+    opacity: 0.5;
+    background-color: #e9f5ff;
+}
+tr.dragging td {
+    border-bottom: 2px dashed #007bff;
+}
+/* 浮层提示样式 */
+.toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 25px;
+    border-radius: 6px;
+    color: white;
+    font-size: 16px;
+    z-index: 999999;
+    opacity: 0;
+    transform: translateY(-50px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    background: #dc3545;
+}
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+.toast-success {
+    background: #28a745 !important;
+}
+.toast-error {
+    background: #dc3545 !important;
+}
+/* 下载按钮样式 */
+.btn-success {
+    background: #28a745;
+}
+.btn-success:hover {
+    background: #218838;
+}
+/* 弹窗样式 */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+.modal {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 500px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.3);
+}
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+.modal-title {
+    font-size: 18px;
+    color: #333;
+    margin: 0;
+}
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #666;
+    cursor: pointer;
+}
+.modal-close:hover {
+    color: #dc3545;
+}
+.modal-footer {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+/* 备份弹窗滚动条样式优化 */
+.modal-overlay #backupModalOverlay .modal {
+    max-width: 800px;
+}
+.modal-overlay .modal table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.modal-overlay .modal table th,
+.modal-overlay .modal table td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+.modal-overlay .modal table th {
+    background: #e9ecef;
+    color: #333;
+}
+/* 禁用按钮样式 */
+.btn:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+.btn:disabled:hover {
+    background: #6c757d;
+}
+/* 弹窗内容滚动条样式 */
+.modal-overlay .modal div[style*="overflow-y: auto"]::-webkit-scrollbar {
+    width: 6px;
+}
+.modal-overlay .modal div[style*="overflow-y: auto"]::-webkit-scrollbar-thumb {
+    background: #ddd;
+    border-radius: 3px;
+}
+.modal-overlay .modal div[style*="overflow-y: auto"]::-webkit-scrollbar-thumb:hover {
+    background: #ccc;
+}
+.logout-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    padding: 6px 12px;
+    color: #999;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    background: transparent;
+}
+.logout-btn:hover {
+    color: #c82333;
+    background: transparent;
+}
