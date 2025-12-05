@@ -2,7 +2,11 @@
     "urls": [
         {
             "url": "http:\/\/www.饭太硬.com\/tv",
-            "name": "饭太硬"
+            "name": "👍饭太硬"
+        },
+        {
+            "url": "http:\/\/www.饭太硬.net\/tv\/",
+            "name": "👍饭太硬(电信勿用)"
         },
         {
             "url": "http:\/\/我不是.摸鱼儿.xyz",
@@ -243,10 +247,6 @@
         {
             "url": "https:\/\/ghfast.top\/https:\/\/raw.githubusercontent.com\/foxccs\/tvbox\/main\/m.json",
             "name": "最后更新时间:20251202"
-        },
-        {
-            "url": "http:\/\/www.饭太硬.net\/tv\/",
-            "name": "👍饭太硬(电信勿用)"
         }
     ]
 }
