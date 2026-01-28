@@ -10,7 +10,7 @@ https://www.imwzh.com/tv.json
 
 自用多仓源，随时更新，同步推送Git
 
-接口均来自各大神线路。本接口仅做集成，未修改任何内容。by [imwzh](https://www.imwzh.com/)
+接口均来自各大神线路。本接口仅做集成，未修改任何内容。
 
 
 
@@ -29,5 +29,5 @@ $jsonurl = '你的订阅地址';    // 替换为你的订阅地址(非必须)
 
 
 
-![](https://raw.githubusercontent.com/hiboxs/a/main/image.png)
+
 
