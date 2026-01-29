@@ -2,7 +2,7 @@
     "urls": [
         {
             "url": "http:\/\/www.饭太硬.com\/tv",
-            "name": "👍饭太硬r(推荐)"
+            "name": "👍饭太硬"
         },
         {
             "url": "http:\/\/www.饭太硬.net\/tv\/",
@@ -95,6 +95,10 @@
         {
             "url": "https:\/\/tv.菜妮丝.top",
             "name": "菜妮丝"
+        },
+        {
+            "url": "https:\/\/7337.kstore.space\/kjtv\/%E8%87%AA%E7%94%A8%E6%B5%8B%E8%AF%95.json",
+            "name": "️天微"
         },
         {
             "url": "https:\/\/jihulab.com\/ymz1231\/xymz\/-\/raw\/main\/ymz",
