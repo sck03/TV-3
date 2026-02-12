@@ -88,7 +88,7 @@ table {
     overflow-wrap: break-word;
 }
 th, td {
-    padding: 12px;
+    padding: 16px;
     text-align: left;
     border-bottom: 1px solid #ddd;
 }
@@ -99,9 +99,12 @@ th {
 tr:hover {
     background: #f5f5f5;
 }
+td.n_id {
+    min-width: 50px;
+}
 /* 操作栏样式：上移下移第一行，编辑删除第二行 */
 .action-buttons {
-    max-width: 110px;
+    min-width: 250px;
 }
 /* 消除表单默认间距 */
 .action-buttons .lin1 {
