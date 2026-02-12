@@ -16,7 +16,7 @@ https://www.imwzh.com/tv.json
 
 
 
-## 影视仓多仓管理系统 ![](https://img.shields.io/badge/version-v2.0.0-blue.svg)
+## 影视仓多仓管理系统 ![](https://img.shields.io/badge/version-v2.0.1-blue.svg)
 
 用于管理影视仓多仓源，支持添加、修改、排序、拖拽排序，自动生成 `tv.json` 
 

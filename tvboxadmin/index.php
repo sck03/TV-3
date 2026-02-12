@@ -1,6 +1,6 @@
 <?php
 session_start(); // 提前开启SESSION，用于存储提示信息
-$version = '2.0.0';
+$version = '2.0.1';
 $loginError = false;
 $adminPassword = 'admin'; // 替换为你的登录密码
 $jsonurl = 'https://www.imwzh.com/tv.json'; // 替换为你的订阅地址
@@ -541,10 +541,10 @@ foreach ($tvList as $item) {
         <table>
             <thead>
                 <tr>
-                    <th>ID</th>
-                    <th>名称</th>
-                    <th>地址</th>
-                    <th>操作</th>
+                    <th class="n_id">ID</th>
+                    <th class="name-col">名称</th>
+                    <th class="url-col">地址</th>
+                    <th class="action-buttons">操作</th>
                 </tr>
             </thead>
             <tbody>
@@ -556,8 +556,8 @@ foreach ($tvList as $item) {
                     <?php foreach ($tvList as $item): ?>
                         <tr>
                             <td class="n_id"><?php echo $item['id']; ?></td>
-                            <td><?php echo htmlspecialchars($item['name']); ?></td>
-                            <td>
+                            <td class="name-col"><?php echo htmlspecialchars($item['name']); ?></td>
+                            <td class="url-col">
                                 <a href="<?php echo htmlspecialchars($item['url']); ?>" target="_blank" style="color: #007bff; text-decoration: none;">
                                     <?php echo htmlspecialchars($item['url']); ?>
                                 </a>
