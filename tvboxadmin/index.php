@@ -1,9 +1,9 @@
 <?php
 session_start(); // 提前开启SESSION，用于存储提示信息
-$version = '1.0.0';
+$version = '2.0.1';
 $loginError = false;
-$adminPassword = '你的登录密码'; // 替换为你的登录密码
-$jsonurl = '你的订阅地址'; // 替换为你的订阅地址
+$adminPassword = 'admin'; // 替换为你的登录密码
+$jsonurl = 'https://www.imwzh.com/tv.json'; // 替换为你的订阅地址
 
 // 处理登录提交
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -43,7 +43,7 @@ if (!isset($_COOKIE['tv_admin_login']) || $_COOKIE['tv_admin_login'] !== md5($ad
             </div>
             <div style="padding: 0 20px;">
             <div style="margin-top: 30px; padding: 15px; background: #f0f8ff; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
-                <p style="color: #333; font-weight: bold;">影视仓配置地址：</p><a href="' . $jsonurl . '" target="_blank" style="color: #007bff; text-decoration: none;">' . $jsonurl . '</a></div>
+                <p style="color: #333; font-weight: bold;">影视仓配置地址：</p><a href="'.$jsonurl.'" target="_blank" style="color: #007bff; text-decoration: none;">'.$jsonurl.'</a></div>
             </div>
             <div style="padding: 20px;">
                 <form method="post">
@@ -179,32 +179,76 @@ if (isset($_POST['action']) && in_array($_POST['action'], ['move_up', 'move_down
     $id = intval($_POST['id']);
     $direction = $_POST['action'] == 'move_up' ? 'up' : 'down';
 
-    if (reorderTvData($id, $direction)) {
-        $_SESSION['toast_msg'] = $direction == 'up' ? '上移成功！' : '下移成功！';
-        $_SESSION['toast_type'] = 'success';
+    $result = reorderTvData($id, $direction);
+    if ($result && $result['file_save']) {
+        $msg = ($direction == 'up' ? '上移' : '下移') . '成功！';
+        if (is_array($result)) {
+            if ($result['no_changes']) {
+                $msg .= ' (无更改需要提交)';
+            } elseif ($result['git_push']) {
+                $msg .= ' 已自动推送到GitHub！';
+                if (!empty($result['commit_message'])) {
+                    $_SESSION['commit_details'] = $result['commit_message'];
+                }
+            } else {
+                $msg .= ' 但GitHub推送失败！';
+                if (!empty($result['error'])) {
+                    $msg .= ' 错误: ' . $result['error'];
+                }
+            }
+        }
+        $_SESSION['toast_msg'] = $msg;
+        $_SESSION['toast_type'] = $result['git_push'] ? 'success' : ($result['no_changes'] ? 'info' : 'warning');
     } else {
-        $_SESSION['toast_msg'] = $direction == 'up' ? '上移失败！' : '下移失败！';
+        $_SESSION['toast_msg'] = ($direction == 'up' ? '上移' : '下移') . '失败！';
         $_SESSION['toast_type'] = 'error';
     }
     header('Location: index.php');
     exit;
 }
-
 // 2. 处理删除操作（POST）
 if (isset($_POST['action']) && $_POST['action'] === 'delete' && isset($_POST['id'])) {
     $id = intval($_POST['id']);
     $tvList = getTvData();
     $newTvList = [];
+    $deletedName = '';
+
     foreach ($tvList as $item) {
-        if ($item['id'] !== $id) $newTvList[] = $item;
+        if ($item['id'] === $id) {
+            $deletedName = $item['name'];
+        } else {
+            $newTvList[] = $item;
+        }
     }
+
     $fixedList = [];
     foreach ($newTvList as $i => $item) {
-        $fixedList[] = ['id' => $i+1, 'name' => $item['name'], 'url' => $item['url']];
+        $fixedList[] = [
+            'id' => $i + 1,
+            'name' => $item['name'],
+            'url' => $item['url'],
+            'status' => $item['status'] // 修复：保持状态字段
+        ];
     }
-    if (saveTvData($fixedList)) {
-        $_SESSION['toast_msg'] = '删除成功！';
-        $_SESSION['toast_type'] = 'success';
+
+    $result = saveTvData($fixedList, '删除', $deletedName);
+    if ($result['file_save']) {
+        $msg = '删除成功！';
+        if ($result['no_changes']) {
+            $msg .= ' (无更改需要提交)';
+        } elseif ($result['git_push']) {
+            $msg .= ' 已自动推送到GitHub！';
+            if (!empty($result['commit_message'])) {
+                $_SESSION['commit_details'] = $result['commit_message'];
+            }
+        } else {
+            $msg .= ' 但GitHub推送失败！';
+            if (!empty($result['error'])) {
+                $msg .= ' 错误: ' . $result['error'];
+            }
+        }
+        $_SESSION['toast_msg'] = $msg;
+        $_SESSION['toast_type'] = $result['git_push'] ? 'success' : ($result['no_changes'] ? 'info' : 'warning');
     } else {
         $_SESSION['toast_msg'] = '删除失败！';
         $_SESSION['toast_type'] = 'error';
@@ -255,35 +299,86 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['action'])) {
     }
 
     if (isset($_POST['id']) && $_POST['id'] > 0) {
+        // 编辑操作
         $id = intval($_POST['id']);
         $tvList = getTvData();
         $updated = false;
+        $oldName = '';
+
         foreach ($tvList as &$item) {
             if ($item['id'] === $id) {
+                $oldName = $item['name'];
                 $item['name'] = $name;
                 $item['url'] = $url;
+                // 修复：保持状态字段
+                if (isset($_POST['status'])) {
+                    $item['status'] = $_POST['status'];
+                }
                 $updated = true;
                 break;
             }
         }
         unset($item);
-        if ($updated && saveTvData($tvList)) {
-            $_SESSION['toast_msg'] = '修改成功！';
-            $_SESSION['toast_type'] = 'success';
+
+        if ($updated) {
+            $result = saveTvData($tvList, '编辑', $oldName . ' → ' . $name);
+            if ($result['file_save']) {
+                $msg = '修改成功！';
+                if ($result['no_changes']) {
+                    $msg .= ' (无更改需要提交)';
+                } elseif ($result['git_push']) {
+                    $msg .= ' 已自动推送到GitHub！';
+                    if (!empty($result['commit_message'])) {
+                        $_SESSION['commit_details'] = $result['commit_message'];
+                    }
+                } else {
+                    $msg .= ' 但GitHub推送失败！';
+                    if (!empty($result['error'])) {
+                        $msg .= ' 错误: ' . $result['error'];
+                    }
+                }
+                $_SESSION['toast_msg'] = $msg;
+                $_SESSION['toast_type'] = $result['git_push'] ? 'success' : ($result['no_changes'] ? 'info' : 'warning');
+            } else {
+                $_SESSION['toast_msg'] = '修改失败！';
+                $_SESSION['toast_type'] = 'error';
+            }
         } else {
-            $_SESSION['toast_msg'] = '修改失败！';
+            $_SESSION['toast_msg'] = '修改失败，数据未找到！';
             $_SESSION['toast_type'] = 'error';
         }
     } else {
+        // 新增操作
         $tvList = getTvData();
         $maxId = 0;
         foreach ($tvList as $item) {
             if ($item['id'] > $maxId) $maxId = $item['id'];
         }
-        $tvList[] = ['id' => $maxId+1, 'name' => $name, 'url' => $url];
-        if (saveTvData($tvList)) {
-            $_SESSION['toast_msg'] = '新增成功！';
-            $_SESSION['toast_type'] = 'success';
+        $tvList[] = [
+            'id' => $maxId + 1, 
+            'name' => $name, 
+            'url' => $url,
+            'status' => 'active' // 新增数据默认为活跃状态
+        ];
+
+        $result = saveTvData($tvList, '新增', $name);
+        if ($result['file_save']) {
+            $msg = '新增成功！';
+            if ($result['no_changes']) {
+                $msg .= ' (无更改需要提交)';
+            } elseif ($result['git_push']) {
+                $msg .= ' 已自动推送到GitHub！';
+                if (!empty($result['commit_message'])) {
+                    $_SESSION['commit_details'] = $result['commit_message'];
+                }
+            } else {
+                $msg .= ' 但GitHub推送失败！';
+                if (!empty($result['error'])) {
+                    $msg .= ' 错误: ' . $result['error'];
+                }
+            }
+            $_SESSION['toast_msg'] = $msg;
+            $_SESSION['toast_type'] = $result['git_push'] ? 'success' : ($result['no_changes'] ? 'info' : 'warning');
         } else {
             $_SESSION['toast_msg'] = '新增失败！';
             $_SESSION['toast_type'] = 'error';
@@ -300,19 +395,98 @@ if (isset($_GET['action']) && $_GET['action'] === 'drag_reorder' && isset($_GET[
 
     $result = [
         'success' => false,
-        'msg' => '排序失败'
+        'msg' => '排序失败',
+        'type' => 'error'
     ];
 
-    if (dragReorderTvData($fromId, $toId)) {
+    $saveResult = dragReorderTvData($fromId, $toId);
+    if ($saveResult) {
         $result['success'] = true;
         $result['msg'] = '排序成功';
+
+        if (is_array($saveResult)) {
+            if ($saveResult['no_changes']) {
+                $result['msg'] .= ' (无更改需要提交)';
+                $result['type'] = 'info';
+            } elseif ($saveResult['git_push']) {
+                $result['msg'] .= ' 已自动推送到GitHub！';
+                $result['type'] = 'success';
+                if (!empty($saveResult['commit_message'])) {
+                    $result['details'] = $saveResult['commit_message'];
+                }
+            } else {
+                $result['msg'] .= ' 但GitHub推送失败！';
+                $result['type'] = 'warning';
+                if (!empty($saveResult['error'])) {
+                    $result['details'] = '错误: ' . $saveResult['error'];
+                }
+            }
+        }
     }
 
     header('Content-Type: application/json');
     echo json_encode($result);
     exit;
 }
+// 7. 处理暂停操作（POST）
+if (isset($_POST['action']) && $_POST['action'] === 'pause' && isset($_POST['id'])) {
+    $id = intval($_POST['id']);
+    $result = pauseTvItem($id);
+    
+    if ($result && $result['file_save']) {
+        $msg = '暂停成功！';
+        if ($result['no_changes']) {
+            $msg .= ' (无更改需要提交)';
+        } elseif ($result['git_push']) {
+            $msg .= ' 已自动推送到GitHub！';
+            if (!empty($result['commit_message'])) {
+                $_SESSION['commit_details'] = $result['commit_message'];
+            }
+        } else {
+            $msg .= ' 但GitHub推送失败！';
+            if (!empty($result['error'])) {
+                $msg .= ' 错误: ' . $result['error'];
+            }
+        }
+        $_SESSION['toast_msg'] = $msg;
+        $_SESSION['toast_type'] = $result['git_push'] ? 'success' : ($result['no_changes'] ? 'info' : 'warning');
+    } else {
+        $_SESSION['toast_msg'] = '暂停失败！';
+        $_SESSION['toast_type'] = 'error';
+    }
+    header('Location: index.php');
+    exit;
+}
 
+// 8. 处理启用操作（POST）
+if (isset($_POST['action']) && $_POST['action'] === 'resume' && isset($_POST['id'])) {
+    $id = intval($_POST['id']);
+    $result = resumeTvItem($id);
+    
+    if ($result && $result['file_save']) {
+        $msg = '启用成功！';
+        if ($result['no_changes']) {
+            $msg .= ' (无更改需要提交)';
+        } elseif ($result['git_push']) {
+            $msg .= ' 已自动推送到GitHub！';
+            if (!empty($result['commit_message'])) {
+                $_SESSION['commit_details'] = $result['commit_message'];
+            }
+        } else {
+            $msg .= ' 但GitHub推送失败！';
+            if (!empty($result['error'])) {
+                $msg .= ' 错误: ' . $result['error'];
+            }
+        }
+        $_SESSION['toast_msg'] = $msg;
+        $_SESSION['toast_type'] = $result['git_push'] ? 'success' : ($result['no_changes'] ? 'info' : 'warning');
+    } else {
+        $_SESSION['toast_msg'] = '启用失败！';
+        $_SESSION['toast_type'] = 'error';
+    }
+    header('Location: index.php');
+    exit;
+}
 // 获取数据和备份文件列表
 $tvList = getTvData();
 $allBackupFiles = getAllBackupFiles();
@@ -324,6 +498,16 @@ if (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['id'])) 
             $editData = $item;
             break;
         }
+    }
+}
+// 在获取数据后计算活跃和暂停数量
+$activeCount = 0;
+$pausedCount = 0;
+foreach ($tvList as $item) {
+    if ($item['status'] === 'active') {
+        $activeCount++;
+    } else {
+        $pausedCount++;
     }
 }
 ?>
@@ -349,7 +533,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['id'])) 
 
         <!-- 列表标题+新增按钮 -->
         <div class="list-header">
-            <h2>数据列表（共 <?php echo count($tvList); ?> 条）</h2>
+            <h2>数据列表<span style="font-size:14px; color:#999;font-weight:normal;">（共 <?php echo count($tvList); ?> 条，已启用：<?php echo $activeCount; ?> 条，暂停：<?php echo $pausedCount; ?> 条）</span></h2>
             <button class="btn" id="addBtn">新增数据</button>
         </div>
 
@@ -357,10 +541,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['id'])) 
         <table>
             <thead>
                 <tr>
-                    <th>ID</th>
-                    <th>名称</th>
-                    <th>地址</th>
-                    <th>操作</th>
+                    <th class="n_id">ID</th>
+                    <th class="name-col">名称</th>
+                    <th class="url-col">地址</th>
+                    <th class="action-buttons">操作</th>
                 </tr>
             </thead>
             <tbody>
@@ -371,45 +555,68 @@ if (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['id'])) 
                 <?php else: ?>
                     <?php foreach ($tvList as $item): ?>
                         <tr>
-                            <td><?php echo $item['id']; ?></td>
-                            <td><?php echo htmlspecialchars($item['name']); ?></td>
-                            <td>
+                            <td class="n_id"><?php echo $item['id']; ?></td>
+                            <td class="name-col"><?php echo htmlspecialchars($item['name']); ?></td>
+                            <td class="url-col">
                                 <a href="<?php echo htmlspecialchars($item['url']); ?>" target="_blank" style="color: #007bff; text-decoration: none;">
                                     <?php echo htmlspecialchars($item['url']); ?>
                                 </a>
                             </td>
                             <td class="action-buttons">
-                                <div class="lin1">
-                                <!-- 第一行：上移、下移（POST表单） -->
-                                <form method="post" action="index.php" onsubmit="return confirm('确定要将此项上移吗？')" style="display: inline;">
-                                    <input type="hidden" name="action" value="move_up">
-                                    <input type="hidden" name="id" value="<?php echo $item['id']; ?>">
-                                    <button type="submit" class="btn btn-sm move-up" <?php echo $item['id'] == 1 ? 'disabled title="已经是第一条"' : ''; ?>>
-                                        上移
-                                    </button>
-                                </form>
-                                <form method="post" action="index.php" onsubmit="return confirm('确定要将此项下移吗？')" style="display: inline;">
-                                    <input type="hidden" name="action" value="move_down">
-                                    <input type="hidden" name="id" value="<?php echo $item['id']; ?>">
-                                    <button type="submit" class="btn btn-sm move-down" <?php echo $item['id'] == count($tvList) ? 'disabled title="已经是最后一条"' : ''; ?>>
-                                        下移
-                                    </button>
-                                </form>
-                                </div>
-                                <div class="lin2">
-                                <!-- 第二行：编辑、删除（POST表单） -->
+                                
+                                <!-- 第一行：上移、下移（只对活跃数据有效） -->
+                                <?php if ($item['status'] === 'active'): ?>
+                                    <form method="post" action="index.php" onsubmit="return confirm('确定要将此项上移吗？')" style="display: inline;">
+                                        <input type="hidden" name="action" value="move_up">
+                                        <input type="hidden" name="id" value="<?php echo $item['id']; ?>">
+                                        <button type="submit" class="btn btn-sm move-up" <?php echo $item['id'] == 1 ? 'disabled title="已经是第一条"' : ''; ?>>
+                                            上移
+                                        </button>
+                                    </form>
+                                    <form method="post" action="index.php" onsubmit="return confirm('确定要将此项下移吗？')" style="display: inline;">
+                                        <input type="hidden" name="action" value="move_down">
+                                        <input type="hidden" name="id" value="<?php echo $item['id']; ?>">
+                                        <button type="submit" class="btn btn-sm move-down" <?php echo $item['id'] == $activeCount ? 'disabled title="已经是最后一条"' : ''; ?>>
+                                            下移
+                                        </button>
+                                    </form>
+                                <?php else: ?>
+                                    <!--<span style="color: #999; font-size: 12px;">已暂停</span>-->
+                                <?php endif; ?>
+                                
+                                
+                                <!-- 第二行：编辑、删除/暂停/启用 -->
                                 <button class="btn btn-sm editBtn"
                                         data-id="<?php echo $item['id']; ?>"
                                         data-name="<?php echo htmlspecialchars($item['name']); ?>"
-                                        data-url="<?php echo htmlspecialchars($item['url']); ?>">
+                                        data-url="<?php echo htmlspecialchars($item['url']); ?>"
+                                        data-status="<?php echo $item['status']; ?>">
                                     编辑
                                 </button>
+                                
+                                <?php if ($item['status'] === 'active'): ?>
+                                    <!-- 活跃数据：显示暂停按钮 -->
+                                    <form method="post" action="index.php" onsubmit="return confirm('确定要暂停此数据源吗？暂停后不会在tv.json中显示')" style="display: inline;">
+                                        <input type="hidden" name="action" value="pause">
+                                        <input type="hidden" name="id" value="<?php echo $item['id']; ?>">
+                                        <button type="submit" class="btn btn-sm" style="background: #ffc107; color: #000;">暂停</button>
+                                    </form>
+                                <?php else: ?>
+                                    <!-- 暂停数据：显示启用按钮 -->
+                                    <form method="post" action="index.php" onsubmit="return confirm('确定要启用此数据源吗？')" style="display: inline;">
+                                        <input type="hidden" name="action" value="resume">
+                                        <input type="hidden" name="id" value="<?php echo $item['id']; ?>">
+                                        <button type="submit" class="btn btn-sm" style="background: #28a745; color: white;">启用</button>
+                                    </form>
+                                <?php endif; ?>
+                                
+                                
                                 <form method="post" action="index.php" onsubmit="return confirm('确定要删除吗？')" style="display: inline;">
                                     <input type="hidden" name="action" value="delete">
                                     <input type="hidden" name="id" value="<?php echo $item['id']; ?>">
                                     <button type="submit" class="btn btn-sm btn-danger">删除</button>
                                 </form>
-                                </div>
+                                
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -421,7 +628,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['id'])) 
         <div style="margin-top: 30px; padding: 15px; background: #f0f8ff; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
             <div>
                 <p style="color: #333; font-weight: bold; margin-bottom: 5px;">JSON输出地址：</p>
-                <a href="<?php echo $jsonurl; ?>" target="_blank" style="color: #007bff; text-decoration: none;"><?php echo $jsonurl; ?></a>
+                <a href="<?php echo $jsonurl ?>" target="_blank" style="color: #007bff; text-decoration: none;"><?php echo $jsonurl ?></a>
             </div>
             <div style="display: flex; gap: 10px;">
                 <!-- 备份按钮（POST表单） -->
@@ -445,6 +652,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['id'])) 
             </div>
             <form method="post" action="index.php" id="modalForm">
                 <input type="hidden" name="id" id="formId" value="0">
+                <input type="hidden" name="status" id="formStatus" value="active">
                 <div class="form-group">
                     <label for="formName">名称</label>
                     <input type="text" id="formName" name="name" required>
@@ -482,7 +690,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['id'])) 
                     <table style="width: 100%; border-collapse: collapse;">
                         <thead>
                             <tr style="background: #e9ecef;">
-                                <th style="padding: 10px; text-align: left; border-bottom: 1px solid #ddd; font-size: 14px;">备份文件名</th>
+                                <th style="padding: 10px; text-align: left; border-bottom: 1px solid #ddd; font-size: 14px; width: 30%;">备份文件名</th>
                                 <th style="padding: 10px; text-align: center; border-bottom: 1px solid #ddd; font-size: 14px;">文件大小</th>
                                 <th style="padding: 10px; text-align: center; border-bottom: 1px solid #ddd; font-size: 14px;">备份时间</th>
                                 <th style="padding: 10px; text-align: center; border-bottom: 1px solid #ddd; font-size: 14px;">操作</th>
@@ -529,7 +737,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['id'])) 
 </div>
 
 <script>
+console.log('\n' + ' %c 影视仓多源管理系统' + ' %c v<?php echo $version; ?> ' + '\n', 'color: #fadfa3; background: #030307; padding:5px 0;', 'background: #fadfa3; padding:5px 0;');
 // 整合所有提示数据
+
 const toastData = {
     msg: "<?php echo addslashes(trim($toastMsg)); ?>",
     type: "<?php echo trim($toastType) ?: 'error'; ?>",
@@ -605,11 +815,13 @@ window.onload = function() {
             const id = btn.getAttribute('data-id');
             const name = btn.getAttribute('data-name');
             const url = btn.getAttribute('data-url');
+            const status = btn.getAttribute('data-status');
 
             document.getElementById('modalTitle').textContent = '编辑数据';
             document.getElementById('formId').value = id;
             document.getElementById('formName').value = name;
             document.getElementById('formUrl').value = url;
+            document.getElementById('formStatus').value = status;
             modalOverlay.style.display = 'flex';
         });
     });
@@ -619,9 +831,9 @@ window.onload = function() {
     }
     modalClose.addEventListener('click', closeModal);
     cancelBtn.addEventListener('click', closeModal);
-    modalOverlay.addEventListener('click', (e) => {
-        if (e.target === modalOverlay) closeModal();
-    });
+    // modalOverlay.addEventListener('click', (e) => {
+    //     if (e.target === modalOverlay) closeModal();
+    // });
 
     // 4. 备份列表弹窗控制逻辑
     const backupModalOverlay = document.getElementById('backupModalOverlay');
@@ -722,7 +934,6 @@ window.onload = function() {
         });
     });
 
-
     // 6. 拖拽排序功能
     let draggedItem = null;
     const tableBody = document.querySelector('table tbody');
@@ -778,7 +989,7 @@ window.onload = function() {
         });
     });
 
-    // 显示提示框
+    // 辅助函数：显示提示框
     function showToast(message, type) {
         const toast = document.getElementById('toast');
         const toastContent = document.getElementById('toastContent');
